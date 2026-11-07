@@ -1,0 +1,21 @@
+// Synthetic activity library (FR-01). No real learner data. Each activity carries steps, timing, safety and inclusion guidance.
+export const ACTIVITIES = [
+  { id: 'act-pitch-area', title: 'Measure the pitch and work out its area', topic: 'Measurement', minutes: 45, equipment: 'low', summary: 'Pairs measure the pitch with a trundle wheel or tape and calculate area.', materials: 'Trundle wheel or tape measure, cones, paper',
+    safety: 'Check the pitch is clear of holes and glass. Keep groups away from goal posts being moved.', inclusion: 'Pair learners so one reads and one records; offer a pre-drawn table. Learners who cannot walk the pitch can record and calculate.',
+    steps: [['Walk the pitch edges and place cones at the corners', 10], ['Measure length and width in pairs', 15], ['Record results in the table', 5], ['Calculate area (length x width) and compare pairs', 15]] },
+  { id: 'act-sprint-speed', title: 'Time 20 m sprints and calculate speed', topic: 'Speed', minutes: 40, equipment: 'low', summary: 'Learners time 20 m sprints with a shared phone stopwatch and work out metres per second.', materials: 'Shared phone stopwatch, cones, paper for results',
+    safety: 'Warm up first. Mark a clear 5 m run-off beyond the finish cone. Sprint one at a time.', inclusion: 'Learners who cannot sprint act as timers or analysts; use a shorter distance if needed.',
+    steps: [['Warm up and mark 20 m with cones', 10], ['Time each sprint in turn', 15], ['Calculate speed = distance / time', 10], ['Discuss why times differ', 5]] },
+  { id: 'act-ball-angles', title: 'Ball flight and kick angles', topic: 'Angles', minutes: 50, equipment: 'low', summary: 'Kick from three angles and compare distance travelled.', materials: 'Football, cones, tape measure',
+    safety: 'Kick in one direction only. Everyone behind the kicking line while others kick.', inclusion: 'Allow rolling or throwing instead of kicking; use a lighter ball for younger or less confident learners.',
+    steps: [['Set kicking line and three angle markers', 10], ['Each learner kicks once per angle', 15], ['Measure and record distance', 15], ['Graph or discuss which angle went furthest', 10]] },
+  { id: 'act-heart-rate', title: 'Resting and exercise pulse count', topic: 'Data', minutes: 30, equipment: 'none', summary: 'Learners count pulse before and after exercise and compare.', materials: 'Phone stopwatch (shared), paper',
+    safety: 'Keep exercise light. Anyone feeling dizzy sits down at once. No pressure to take part.', inclusion: 'Offer arm exercises or a seated option; learners may observe and record.',
+    steps: [['Find the pulse and practise counting', 8], ['Count resting pulse for 30 s', 5], ['Do 1 minute of light exercise then count again', 10], ['Compare and discuss', 7]] },
+  { id: 'act-shadow-height', title: 'Shadow length and time of day', topic: 'Measurement', minutes: 35, equipment: 'none', summary: 'Measure shadows of a cone at different times to see how the sun moves.', materials: 'Cone, chalk, tape measure',
+    safety: 'Never look at the sun. Work in shade between readings.', inclusion: 'Use large-print tables; learners can work as readers or recorders.',
+    steps: [['Set cone and chalk its base', 5], ['Measure shadow now', 5], ['Repeat later in the session', 15], ['Compare and explain', 10]] },
+  { id: 'act-pass-accuracy', title: 'Pass accuracy tally and percentages', topic: 'Data', minutes: 40, equipment: 'low', summary: 'Count completed passes in pairs and convert to a percentage.', materials: 'Football, cones, tally sheet',
+    safety: 'Keep pairs spaced out; stop if the ball goes onto a road or path.', inclusion: 'Offer a hand-pass option; allow any learner to be tally keeper.',
+    steps: [['Set pairs 8 m apart', 5], ['Make 10 passes, tally completions', 15], ['Convert to a percentage', 10], ['Compare pairs as a class', 10]] },
+];

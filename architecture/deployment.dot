@@ -1,0 +1,7 @@
+digraph G{rankdir=LR;bgcolor="white";fontname="Helvetica";node[fontname="Helvetica",fontsize=11,shape=box,style="rounded,filled",margin="0.15,0.08"];edge[fontname="Helvetica",fontsize=10];
+subgraph cluster_p{label="Facilitator phone (Android, ~2 GB RAM)";style="rounded";p[label="Browser\nSTEMMate web app\n+ localStorage",fillcolor="#EAF6F3"];}
+subgraph cluster_s{label="School hub: existing laptop or mini PC (Node 22)";style="rounded";h[label="node src/server.js\n+ stemmate.db (SQLite)",fillcolor="#E8EEF7"];b[label="Weekly backup\nUSB / folder copy",fillcolor="#EEEEEE"];}
+wifi[label="School Wi-Fi or phone hotspot\n(intermittent)",shape=ellipse,fillcolor="#FFF4D6"];
+p->wifi[label="sync batch, a few KB",style=bold];wifi->h;h->b[label="export JSON / copy db file"];
+p->p[label="works fully offline",style=dashed];
+label="Purpose: show where components run and the network between them.\nLegend: bold = occasional network traffic; dashed = offline operation. No cloud service or recurring fee required.";labelloc=b;fontsize=11}

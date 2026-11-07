@@ -1,0 +1,4 @@
+{ "name": "stemmate-a4", "version": "2.0.0", "type": "module", "private": true,
+  "description": "STEMMate Namibia A4 vertical slice: discover activity -> build safe, inclusive session plan -> save offline -> truthful sync",
+  "engines": { "node": ">=22.13" },
+  "scripts": { "start": "node src/server.js", "test": "node --test --no-warnings \"test/*.test.js\"" } }

@@ -1,0 +1,8 @@
+digraph G{rankdir=TB;bgcolor="white";node[fontname="Helvetica",fontsize=11,shape=box,style="rounded,filled",margin="0.15,0.08"];edge[fontname="Helvetica",fontsize=10];
+s1[label="Facilitator taps Save plan",fillcolor="#EAF6F3"];s2[label="Client validation passes?",shape=diamond,fillcolor="#FFF4D6"];e1[label="Show field errors (text + icon),\nfocus first bad field, keep typing",fillcolor="#FBD5D5"];
+s3[label="Write plan + op{opId, baseVersion} to localStorage",fillcolor="#EAF6F3"];s4[label="Storage write OK?",shape=diamond,fillcolor="#FFF4D6"];e2[label="Roll back, say plan NOT saved,\nform stays on screen",fillcolor="#FBD5D5"];
+s5[label="Status: Saved on this phone, waiting",fillcolor="#FFF4D6"];s6[label="Online? POST /api/sync",shape=diamond,fillcolor="#FFF4D6"];
+s7[label="Server: validate, version check,\ntransaction, record opId",fillcolor="#E8EEF7"];r[label="Result?",shape=diamond,fillcolor="#FFF4D6"];
+ok[label="Remove op, status: All saved on server",fillcolor="#D5F5DF"];cf[label="409 Conflict: keep mine / use server",fillcolor="#FFE2C2"];rj[label="422: show server messages, keep op",fillcolor="#FBD5D5"];st[label="500 STORAGE: Sync failed, retry, data safe",fillcolor="#FBD5D5"];
+s1->s2;s2->e1[label="no"];s2->s3[label="yes"];s3->s4;s4->e2[label="no"];s4->s5[label="yes"];s5->s6;s6->s5[label="no / network error"];s6->s7[label="yes"];s7->r;r->ok;r->cf;r->rj;r->st;
+label="Purpose: the save-and-sync scenario of the vertical slice (FR-03, FR-04, FR-05, QR-05).";labelloc=b;fontsize=11}

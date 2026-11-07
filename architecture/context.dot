@@ -1,0 +1,10 @@
+digraph G{rankdir=LR;bgcolor="white";fontname="Helvetica";node[fontname="Helvetica",fontsize=12,shape=box,style="rounded,filled",margin="0.18,0.1"];edge[fontname="Helvetica",fontsize=10];
+fac[label="Facilitator\n(school STEM coach)\nshared low-spec phone",fillcolor="#DDF3EE"];adm[label="Local administrator\n(school ICT teacher)",fillcolor="#DDF3EE"];
+sys[label="STEMMate v2.0\nPlanning and attendance support",fillcolor="#1F6F8B",fontcolor="white",width=2.6,height=1.2];
+usb[label="Removable backup\n(USB / school laptop folder)",fillcolor="#EEEEEE"];
+lrn[label="Learners (not users)\nNo names, no accounts,\nno data stored",fillcolor="#FFF4D6",style="rounded,filled,dashed"];
+fac->sys[label="find activities, build plans\n(FR-01, FR-03, FR-04)"];sys->fac[label="status: saved / waiting /\nfailed / conflict (QR-05)"];
+adm->sys[label="export, backup, reset PINs (SR-01)"];sys->usb[label="JSON export (decommissioning)"];
+lrn->sys[style=dashed,label="shirt numbers only\n(QR-03)",arrowhead=none];
+{rank=same;fac;adm}
+label="Purpose: show the system boundary and who/what it exchanges data with.\nLegend: solid arrow = data flow; dashed = out of scope / no personal data. Requirement IDs in brackets.";labelloc=b;fontsize=11}

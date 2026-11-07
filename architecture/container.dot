@@ -1,0 +1,15 @@
+digraph G{rankdir=TB;bgcolor="white";fontname="Helvetica";compound=true;node[fontname="Helvetica",fontsize=11,shape=box,style="rounded,filled",margin="0.15,0.08"];edge[fontname="Helvetica",fontsize=10];
+subgraph cluster_phone{label="Container A: Web app on facilitator phone (browser, HTML+JS, 16 KB)";style="rounded,filled";fillcolor="#EAF6F3";
+ui[label="UI views\nlogin / discover / plans / edit\n(labels, live regions, focus)",fillcolor="#FFFFFF"];
+val[label="Client validation\n(title, minutes, 90-min cap)",fillcolor="#FFFFFF"];
+stat[label="Sync status derivation\n(from outbox contents) QR-05",fillcolor="#FFFFFF"];
+ls[label="Local store (localStorage)\nplans, outbox, draft, cached activities",fillcolor="#FFF4D6"];}
+subgraph cluster_hub{label="Container B: Local hub server (Node 22, zero npm dependencies)";style="rounded,filled";fillcolor="#E8EEF7";
+api[label="HTTP API (server.js)\nauth, roles, routing",fillcolor="#FFFFFF"];
+svc[label="Application logic (service.js)\ndiscovery, savePlan, applySync,\noptimistic versioning, idempotency",fillcolor="#FFFFFF"];
+dom[label="Validation rules (validate.js)\npure functions, unit tested",fillcolor="#FFFFFF"];
+db[label="SQLite database file\nusers, activities, plans,\nplan_steps, applied_ops",fillcolor="#FFF4D6",shape=cylinder];}
+ui->val;ui->stat;val->ls[label="save draft / queue op"];stat->ls[label="read outbox"];
+ls->api[label="POST /api/sync (when online)\nBearer token",lhead=cluster_hub,ltail=cluster_phone];
+api->svc;svc->dom;svc->db[label="transaction"];
+label="Purpose: show the main parts and where each runs. Legend: yellow = persistent data; white = code.";labelloc=b;fontsize=11}

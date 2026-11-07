@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STEMMate v2.0</title>
+<style>
+:root{--bg:#0B0F14;--pn:#141B23;--ln:#7F8E9B;--tx:#F3F6F8;--sb:#C3CDD6;--teal:#3FE0C0;--grn:#4ADE80;--yel:#FBBF24;--org:#FB923C;--red:#F87171;--dk:#0B0F14}
+*{box-sizing:border-box;margin:0}body{font:16px/1.45 system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--tx);max-width:560px;margin:0 auto;padding:16px 16px 48px}
+button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer}:focus-visible{outline:3px solid #fff;outline-offset:2px}h1{font-size:22px;margin:8px 0 12px}h1:focus{outline:none}h2{font-size:17px;margin:18px 0 6px;color:var(--teal)}
+.brand{text-align:center;font-weight:800;letter-spacing:3px;font-size:26px}
+label{display:block;font-weight:600;color:var(--teal);margin:12px 0 4px}input,textarea,select{width:100%;background:var(--pn);border:1.5px solid var(--ln);border-radius:10px;padding:10px 12px}textarea{min-height:70px}
+.hint{font-size:14px;color:var(--sb)}.err{color:#FCA5A5;font-weight:600;font-size:14px;margin-top:4px}[aria-invalid=true]{border-color:var(--red)}
+.btn{display:inline-block;background:var(--pn);border:1.5px solid var(--ln);border-radius:12px;padding:12px 16px;font-weight:600;margin:8px 8px 0 0}.btn.solid{background:var(--teal);color:var(--dk);border-color:var(--teal)}
+.card{background:var(--pn);border:1.5px solid var(--ln);border-radius:12px;padding:12px 14px;margin-top:10px}.card h3{font-size:16px}
+.chip{display:inline-block;border-radius:20px;padding:2px 10px;font-size:13px;font-weight:700;color:var(--dk);margin-right:6px}
+.ban{border-radius:12px;padding:12px 14px;font-weight:600;margin:10px 0;color:var(--dk)}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.row{display:grid;grid-template-columns:1fr 84px auto;gap:8px;align-items:end;margin-top:8px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style></head><body>
+<div class="brand" aria-hidden="true">STEMMATE</div><div id="live" class="vh" role="status" aria-live="polite"></div>
+<div id="stat"></div><main id="app"></main>
+<script>
+const $=s=>document.querySelector(s),app=$('#app'),say=t=>$('#live').textContent=t;
+const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let storageOK=true;
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+const store=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch{storageOK=false;say('Phone storage is full. Not saved.');return false}};
+let S={token:sessionStorage.getItem('tok'),user:load('user',null),plans:load('plans',[]),outbox:load('outbox',[]),acts:load('acts',[]),draft:load('draft',null),sync:{state:'idle',msg:''},view:'login',q:{q:'',topic:'',maxMinutes:'',equipment:''},errs:{},editing:null};
+const persist=()=>{store('plans',S.plans);store('outbox',S.outbox);store('user',S.user)};
+const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+async function api(path,opt={}){const r=await fetch(path,{method:opt.method||'GET',headers:{'content-type':'application/json',...(S.token?{authorization:'Bearer '+S.token}:{})},body:opt.body?JSON.stringify(opt.body):undefined});let j={};try{j=await r.json()}catch{}return{status:r.status,json:j}}
+/* ---- truthful sync status: derived from what is really in the outbox, never from a flag ---- */
+function status(){const n=S.outbox.length,st=S.sync.state;
+ if(st==='syncing')return['Syncing…','var(--yel)','⟳','Sending '+n+' change(s) to the server.'];
+ if(n===0)return['All saved on server','var(--grn)','✔','Nothing waiting. Last plan changes have reached the server.'];
+ if(st==='conflict')return['Needs your decision','var(--org)','!','A plan was changed on the server by someone else. Open My plans to choose.'];
+ if(st==='rejected')return['Not accepted by server','var(--red)','✖',S.sync.msg||'The server refused a change. Open My plans to fix it. It is still saved on this phone.'];
+ if(st==='failed')return['Sync failed','var(--red)','✖',S.sync.msg||'Server problem. '+n+' change(s) are safe on this phone. Tap Sync now to retry.'];
+ return['Saved on this phone, waiting','var(--yel)','⏳',n+' change(s) will be sent when a connection is available.']}
+function drawStat(){const[a,c,i,m]=status();$('#stat').innerHTML=S.user?`<div class="ban" style="background:${c}"><span aria-hidden="true">${i} </span>${a}<br><span style="font-weight:400">${esc(m)}</span>${S.outbox.length?'<br><button class="btn" id="syncnow" style="color:var(--dk);border-color:var(--dk);background:transparent">Sync now</button>':''}</div>`:'';const b=$('#syncnow');if(b)b.onclick=sync}
+async function sync(){if(!S.outbox.length||S.sync.state==='syncing')return;if(!S.token){S.sync={state:'failed',msg:'Sign in again to sync. Changes are safe on this phone.'};return drawStat()}
+ S.sync={state:'syncing'};drawStat();say('Syncing');
+ try{const r=await api('/api/sync',{method:'POST',body:{ops:S.outbox}});
+  if(r.status===401){S.sync={state:'failed',msg:'Session expired. Sign in again. Changes are safe on this phone.'};}
+  else if(r.status>=500||!r.json.results){S.sync={state:'failed',msg:'The server had a problem. Changes are safe on this phone.'};}
+  else{let state='idle',msg='';const keep=[];
+   for(const res of r.json.results){const op=S.outbox.find(o=>o.opId===res.opId);if(!op)continue;
+    if(res.ok){const i=S.plans.findIndex(p=>p.id===res.plan.id);S.plans[i>=0?i:S.plans.length]={...res.plan,pending:false}}
+    else if(res.code==='CONFLICT'){op.conflict=res.server;keep.push(op);state='conflict'}
+    else if(res.code==='VALIDATION'){op.errors=res.errors;keep.push(op);state=state==='conflict'?state:'rejected';msg=res.errors.map(e=>e.message).join(' ')}
+    else{keep.push(op);if(state==='idle')state='failed';msg='Server could not save. '+(res.message||'')}}
+   S.outbox=keep;S.sync={state,msg};say(keep.length?'Some changes were not synced':'All plan changes synced')}
+ }catch{S.sync={state:'idle'};say('No connection. Changes kept on this phone.')}
+ persist();drawStat();if(S.view==='plans')render()}
+addEventListener('online',()=>{say('Back online');sync()});addEventListener('offline',()=>{say('No connection. You can keep working.');drawStat()});
+/* ---- views ---- */
+const nav=()=>`<nav class="nav" aria-label="Main"><button class="btn" data-go="home">Home</button><button class="btn" data-go="discover">Find activities</button><button class="btn" data-go="plans">My plans</button><button class="btn" data-go="export">Sign out</button></nav>`;
+const V={
+login:()=>`<h1 tabindex="-1">Facilitator sign-in</h1><form id="lf" novalidate><label for="ln">Login name</label><input id="ln" autocomplete="username" value="Mr.Coach"><label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="current-password"><p class="hint">Needs a connection the first time. After that the app works offline.</p><div id="lerr" class="err" role="alert">${esc(S.errs.login||'')}</div><button class="btn solid">Sign in</button></form>`,
+home:()=>`${nav()}<h1 tabindex="-1">Home</h1><p class="hint">Signed in as ${esc(S.user?.login)}</p><div class="card"><h3>${S.plans.length} session plan(s)</h3><p class="hint">${S.plans.filter(p=>p.status==='ready').length} ready, ${S.plans.filter(p=>p.status!=='ready').length} draft</p></div>${S.draft?`<div class="card"><h3>Unfinished plan found</h3><p class="hint">${esc(S.draft.title||'Untitled')} was not saved. Nothing was lost.</p><button class="btn solid" data-act="resume">Continue editing</button></div>`:''}<button class="btn solid" data-go="discover">Find an activity</button><button class="btn" data-act="new">Start a blank plan</button>`,
+discover:()=>`${nav()}<h1 tabindex="-1">Find activities</h1><form id="af"><label for="aq">Search</label><input id="aq" type="search" value="${esc(S.q.q)}" placeholder="e.g. sprint, angles"><label for="at">Topic</label><select id="at"><option value="">All topics</option>${['Measurement','Speed','Angles','Data'].map(t=>`<option ${S.q.topic===t?'selected':''}>${t}</option>`).join('')}</select><label for="am">Time available</label><select id="am">${[['','Any'],['30','30 min or less'],['45','45 min or less']].map(([v,t])=>`<option value="${v}" ${S.q.maxMinutes===v?'selected':''}>${t}</option>`).join('')}</select><label for="ae">Equipment</label><select id="ae">${[['','Any'],['none','None needed'],['low','Low-cost items']].map(([v,t])=>`<option value="${v}" ${S.q.equipment===v?'selected':''}>${t}</option>`).join('')}</select></form><div id="alist" aria-live="polite"></div>`,
+plans:()=>`${nav()}<h1 tabindex="-1">My plans</h1>${S.plans.length?'':'<p class="hint">No plans yet. Find an activity to start.</p>'}${S.plans.map(p=>{const op=S.outbox.find(o=>o.plan.id===p.id);return`<div class="card"><h3>${esc(p.title)}</h3><span class="chip" style="background:${p.status==='ready'?'var(--grn)':'var(--org)'}">${p.status==='ready'?'✔ Ready':'✎ Draft'}</span>${op?(op.conflict?'<span class="chip" style="background:var(--org)">! Conflict</span>':op.errors?'<span class="chip" style="background:var(--red)">✖ Not accepted</span>':'<span class="chip" style="background:var(--yel)">⏳ Waiting to sync</span>'):'<span class="chip" style="background:var(--grn)">✔ On server</span>'}<p class="hint">${p.totalMinutes??sum(p.steps)} min · ${(p.steps||[]).length} steps</p>${op?.errors?`<p class="err">${esc(op.errors.map(e=>e.message).join(' '))}</p>`:''}${op?.conflict?`<p class="err">Someone saved "${esc(op.conflict.title)}" on the server first.</p><button class="btn" data-act="keepmine" data-id="${p.id}">Keep my version</button><button class="btn" data-act="useserver" data-id="${p.id}">Use server version</button>`:''}<button class="btn" data-edit="${p.id}">Open</button></div>`}).join('')}`,
+edit:()=>{const p=S.editing,e=S.errs,miss=missing(p);return`${nav()}<h1 tabindex="-1">${p.version?'Edit':'New'} session plan</h1><form id="pf" novalidate><label for="t">Title</label><input id="t" data-f="title" value="${esc(p.title)}" ${e.title?'aria-invalid="true" aria-describedby="te"':''}>${e.title?`<div id="te" class="err" role="alert">✖ ${esc(e.title)}</div>`:''}<label for="g">Learning goal</label><textarea id="g" data-f="learningGoal">${esc(p.learningGoal)}</textarea><label for="m">Materials needed</label><textarea id="m" data-f="materials">${esc(p.materials)}</textarea><h2>Steps and timing</h2>${p.steps.map((s,i)=>`<div class="row"><div><label for="s${i}">Step ${i+1}</label><input id="s${i}" data-step="${i}" data-k="instruction" value="${esc(s.instruction)}" ${e['s'+i]?'aria-invalid="true"':''}></div><div><label for="n${i}">Minutes</label><input id="n${i}" inputmode="numeric" data-step="${i}" data-k="minutes" value="${esc(s.minutes)}" ${e['n'+i]?'aria-invalid="true"':''}></div><button type="button" class="btn" data-rm="${i}" aria-label="Remove step ${i+1}">Remove</button></div>${e['s'+i]||e['n'+i]?`<div class="err" role="alert">✖ ${esc(e['s'+i]||e['n'+i])}</div>`:''}`).join('')}<button type="button" class="btn" data-act="addstep">Add step</button><p class="hint" id="tot">Total: ${sum(p.steps)} min of 90${sum(p.steps)>90?' ✖ too long':''}</p>${e.total?`<div class="err" role="alert">✖ ${esc(e.total)}</div>`:''}<h2>Safety and inclusion</h2><label for="sf">Safety note</label><textarea id="sf" data-f="safety">${esc(p.safety)}</textarea><label for="in">Inclusion note (how can every learner take part?)</label><textarea id="in" data-f="inclusion">${esc(p.inclusion)}</textarea><p class="hint" id="miss">${miss.length?'Will save as Draft. Still missing: '+miss.join(', ')+'.':'✔ Complete. Will save as Ready.'}</p><button class="btn solid">Save plan</button><button type="button" class="btn" data-go="plans">Back (keeps your typing)</button></form>`},
+export:()=>{S.token=null;sessionStorage.removeItem('tok');S.view='login';return V.login()}};
+const sum=st=>(st||[]).reduce((n,s)=>n+(Number(s.minutes)||0),0);
+const missing=p=>[!p.learningGoal.trim()&&'learning goal',!p.steps.length&&'at least one step',!p.materials.trim()&&'materials',!p.safety.trim()&&'safety note',!p.inclusion.trim()&&'inclusion note'].filter(Boolean);
+function render(){if(!S.user&&S.view!=='login')S.view='login';app.innerHTML=V[S.view]();drawStat();const h=app.querySelector('h1');if(h)h.focus({preventScroll:true});document.title='STEMMate v2.0 - '+S.view;if(S.view==='discover')listActs()}
+function go(v){S.view=v;S.errs={};render()}
+/* ---- discovery (works offline from cached library) ---- */
+async function listActs(){const box=$('#alist');if(!box)return;let list,note='';
+ try{const p=new URLSearchParams(Object.entries(S.q).filter(([,v])=>v));const r=await api('/api/activities?'+p);if(r.status!==200)throw 0;list=r.json;if(!Object.values(S.q).some(Boolean)){S.acts=list;store('acts',list)}}
+ catch{const n=S.q.q.toLowerCase(),mx=+S.q.maxMinutes||0;list=S.acts.filter(a=>(!n||(a.title+a.summary+a.topic).toLowerCase().includes(n))&&(!S.q.topic||a.topic===S.q.topic)&&(!mx||a.minutes<=mx)&&(!S.q.equipment||a.equipment===S.q.equipment));note=S.acts.length?'<p class="hint">Offline: showing activities saved on this phone.</p>':'<p class="hint">Offline and no activities saved yet. Connect once to download them.</p>'}
+ box.innerHTML=note+(list.length?list.map(a=>`<div class="card"><h3>${esc(a.title)}</h3><p class="hint">${esc(a.topic)} · ${a.minutes} min · ${a.equipment==='none'?'no equipment':'low-cost items'}</p><p>${esc(a.summary)}</p><details><summary>Safety and inclusion</summary><p><b>Safety:</b> ${esc(a.safety)}</p><p><b>Inclusion:</b> ${esc(a.inclusion)}</p></details><button class="btn solid" data-adapt="${a.id}">Use in a session plan</button></div>`).join(''):'<p role="status">No activities match. Clear a filter and try again.</p>');say(list.length+' activities shown')}
+function adapt(id){const a=S.acts.find(x=>x.id===id);if(!a)return;S.editing={id:uid(),title:a.title,learningGoal:'',activityId:a.id,materials:a.materials,safety:a.safety,inclusion:a.inclusion,steps:a.steps.map(s=>({...s})),version:0};S.draft=S.editing;store('draft',S.draft);go('edit')}
+/* ---- editing, autosave, validation, save ---- */
+function readForm(){const p=S.editing;document.querySelectorAll('[data-f]').forEach(i=>p[i.dataset.f]=i.value);document.querySelectorAll('[data-step]').forEach(i=>p.steps[+i.dataset.step][i.dataset.k]=i.value)}
+function validate(p){const e={};if(!p.title.trim())e.title='Please enter a title.';else if(p.title.trim().length<3)e.title='Title needs at least 3 characters.';
+ p.steps.forEach((s,i)=>{if(!s.instruction.trim())e['s'+i]=`Step ${i+1} needs an instruction.`;const m=Number(s.minutes);if(!Number.isInteger(m)||m<1||m>60)e['n'+i]=`Step ${i+1}: enter whole minutes from 1 to 60.`});if(sum(p.steps)>90)e.total='Steps add up to more than 90 minutes.';return e}
+document.addEventListener('input',e=>{if(!S.editing||!e.target.closest('#pf'))return;readForm();S.draft=S.editing;store('draft',S.draft);const m=missing(S.editing);$('#miss').textContent=m.length?'Will save as Draft. Still missing: '+m.join(', ')+'.':'✔ Complete. Will save as Ready.';$('#tot').textContent='Total: '+sum(S.editing.steps)+' min of 90'});
+document.addEventListener('click',e=>{const b=e.target.closest('button,[data-edit],[data-adapt]');if(!b)return;const d=b.dataset;
+ if(S.view==='edit'&&S.editing&&(d.go||d.act==='addstep'||d.rm!==undefined))readForm();
+ if(d.go)go(d.go);else if(d.adapt)adapt(d.adapt);
+ else if(d.act==='new'){S.editing={id:uid(),title:'',learningGoal:'',activityId:null,materials:'',safety:'',inclusion:'',steps:[],version:0};go('edit')}
+ else if(d.act==='resume'){S.editing=S.draft;go('edit')}
+ else if(d.act==='addstep'){S.editing.steps.push({instruction:'',minutes:''});store('draft',S.editing);render();const n=S.editing.steps.length-1;$('#s'+n).focus()}
+ else if(d.rm!==undefined){S.editing.steps.splice(+d.rm,1);store('draft',S.editing);render()}
+ else if(d.edit){const p=S.plans.find(x=>x.id===d.edit),o=S.outbox.find(x=>x.plan.id===d.edit);S.editing=JSON.parse(JSON.stringify(o?o.plan:p));S.editing.version=p.version||0;go('edit')}
+ else if(d.act==='keepmine'){const o=S.outbox.find(x=>x.plan.id===d.id);o.baseVersion=o.conflict.version;delete o.conflict;S.sync={state:'idle'};persist();sync()}
+ else if(d.act==='useserver'){const o=S.outbox.find(x=>x.plan.id===d.id);S.plans=S.plans.map(p=>p.id===d.id?o.conflict:p);S.outbox=S.outbox.filter(x=>x!==o);S.sync={state:'idle'};persist();render()}});
+document.addEventListener('submit',async e=>{e.preventDefault();
+ if(e.target.id==='lf'){try{const r=await api('/api/login',{method:'POST',body:{loginName:$('#ln').value,pin:$('#pin').value}});if(r.status!==200){S.errs.login='✖ '+(r.json.message||'Could not sign in.');return render()}
+  S.token=r.json.token;sessionStorage.setItem('tok',S.token);S.user=r.json.user;store('user',S.user);go('home');sync()}catch{S.errs.login='✖ Cannot reach the server. Sign-in needs a connection the first time.';render()}}
+ else if(e.target.id==='pf'){readForm();const p=S.editing,er=validate(p);S.errs=er;if(Object.keys(er).length){render();const f=app.querySelector('[aria-invalid=true]');if(f)f.focus();say('Plan not saved. Fix the marked fields.');return}
+  const clean={...p,title:p.title.trim(),steps:p.steps.map(s=>({instruction:s.instruction.trim(),minutes:Number(s.minutes)}))};
+  const ok=store('draft',null)||true;const old=S.plans.find(x=>x.id===p.id);
+  const prev=S.outbox.find(o=>o.plan.id===p.id),op={opId:'op-'+uid(),plan:clean,baseVersion:prev?prev.baseVersion:(old?.version||0)};
+  const view={...clean,status:missing(clean).length?'draft':'ready',totalMinutes:sum(clean.steps),version:old?.version||0};
+  const before={plans:S.plans,outbox:S.outbox};S.plans=old?S.plans.map(x=>x.id===p.id?view:x):[view,...S.plans];S.outbox=[...S.outbox.filter(o=>o.plan.id!==p.id),op];
+  if(!store('plans',S.plans)||!store('outbox',S.outbox)){S.plans=before.plans;S.outbox=before.outbox;S.errs.total='✖ Phone storage is full, so this plan was NOT saved. Free some space, then press Save again. Your typing is still on screen.';return render()}
+  S.draft=null;store('draft',null);S.editing=null;say('Plan saved on this phone');S.sync={state:'idle'};go('plans');sync()}});
+document.addEventListener('input',e=>{if(e.target.closest('#af')){S.q={q:$('#aq').value,topic:$('#at').value,maxMinutes:$('#am').value,equipment:$('#ae').value};listActs()}});
+render();if(S.token&&S.user){go('home');sync()}
+</script></body></html>
